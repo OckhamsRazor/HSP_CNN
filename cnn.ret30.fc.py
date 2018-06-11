@@ -12,7 +12,7 @@ import tensorflow as tf
 from scipy.stats import kendalltau, spearmanr
 from tensorflow.contrib import learn
 
-from trend_clstr import DTWDistance
+# from trend_clstr import DTWDistance
 
 
 MEL_BIN = 128
@@ -409,7 +409,7 @@ def score_pred_only(args):
     dr_rate = float(args.dropout_rate)
     model_dir = '{}.mdl/'.format(args.output)
     loss_t_w = float(args.tagging_loss_weight)
-    pred_f = '{}.test.pred'.format(args.output)
+    pred_f = 'ret30.npy'
 
     test_feat = np.load(
         path.join(train_set, 'xte.npy')).reshape(-1, MEL_BIN, FRAME_NUM, 1)
@@ -471,7 +471,7 @@ def score_pred_only(args):
                 test_logitss = np.concatenate(
                     (test_logitss, test_logits), axis=0)
     # print (test_logitss)
-    # print (denorm(test_logitss))
+    print (denorm(test_logitss))
     np.save(pred_f, denorm(test_logitss))
     # np.save('{}.')
 
@@ -496,7 +496,7 @@ def test(model_dir, test_feat, test_pt, test_ids, test_tags, test_a2v,
         saver.restore(sess, path.join(model_dir, 'model.ckpt'))
         test_losses = []
         test_logitss = None
-        test_dtw = []
+        # test_dtw = []
         test_mse = []
         for test_pos in range(0, test_feat.shape[0], batch_size):
             b_f, b_y = make_batch(
@@ -544,10 +544,10 @@ def test(model_dir, test_feat, test_pt, test_ids, test_tags, test_a2v,
             trd_pred = test_logits  # * NORM_FACTOR
             trd_ref = b_y  # * NORM_FACTOR
             for ref, pred in zip(trd_ref, trd_pred):
-                test_dtw.append(DTWDistance(ref, pred, W))
+                # test_dtw.append(DTWDistance(ref, pred, W))
                 test_mse.append(np.sum((ref - pred) ** 2) ** 0.5)
 
-        true_dtw = sum(test_dtw) / len(test_dtw)
+        # true_dtw = sum(test_dtw) / len(test_dtw)
         true_mse = sum(test_mse) / len(test_mse)
         test_loss_overall = sum(test_losses) / len(test_losses)
         # test_ref *= NORM_FACTOR
@@ -588,7 +588,7 @@ def test(model_dir, test_feat, test_pt, test_ids, test_tags, test_a2v,
             flog.write(
                 'Minimum Validation Loss: {:.6e}\n'.format(prev_val_loss))
         flog.write('Testing MSE: {:.6e}\n'.format(test_loss_overall))
-        flog.write('True MSE/DTW: {:.6e}\t{:.6e}\n'.format(true_mse, true_dtw))
+        # flog.write('True MSE/DTW: {:.6e}\t{:.6e}\n'.format(true_mse, true_dtw))
         flog.write('Overall RMSE: {:.6e}\n\n'.format(overall_mse))
         flog.write('Recall@100: {:d}\n'.format(rec100))
         flog.write('Recall@150: {:d}\n'.format(rec150))
