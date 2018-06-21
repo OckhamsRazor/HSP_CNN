@@ -9,7 +9,7 @@ mv mels/*.npy test_data/xte.npy
 python extract_feats.py
 python make_ex_data.py
 python standardize.py
-python test_model.py
+python2.7 test_model.py
 python3 cnn.ret30.fc.py -i test_data/ -ps -o ret30 -tg
 
 rm -rf jy_feat/* ex_data/* std/* HL_output/* mels/
