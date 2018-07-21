@@ -218,6 +218,7 @@ def cnn_body(head, dr, mode, stt):
         logits_all['ret'] = logits_ret
 
     logits_all['pt'] = logits_pt
+    logits_all['emb'] = conv5
     return logits_all
 
 
@@ -410,12 +411,13 @@ def score_pred_only(args):
     model_dir = '{}.mdl/'.format(args.output)
     loss_t_w = float(args.tagging_loss_weight)
     pred_f = 'ret30.npy'
+    pred_emb = 'ret30.emb.npy'
 
     test_feat = np.load(
         path.join(train_set, 'xte.npy')).reshape(-1, MEL_BIN, FRAME_NUM, 1)
     y_num = test_feat.shape[0]
 
-    test_pt, y_size = None, 1
+    test_pt, y_size, emb_size = None, 1, 78
     test_tags = None
     if use_tag:
         test_tags = np.load(
@@ -423,6 +425,7 @@ def score_pred_only(args):
 
     x_f = tf.placeholder(tf.float32, [None, MEL_BIN, FRAME_NUM, 1])
     y_t = tf.placeholder(tf.float32, [None, y_size])
+    emb_t = tf.placeholder(tf.float32, [None, emb_size, 1])
     mode = tf.placeholder(tf.string)  # TRAIN, EVAL, INFER
     tags = None
     if use_tag:
@@ -439,6 +442,7 @@ def score_pred_only(args):
             x_f, dr_rate, mode, stt)
 
     logits_pt = logits_all['pt']  # primary target(s)
+    logits_emb = logits_all['emb']
     if use_tag:
         logits_tag = tag_regression_clsf(
             tags, dr_rate, mode)
@@ -447,32 +451,39 @@ def score_pred_only(args):
     saver = tf.train.Saver()
     with tf.Session() as sess:
         saver.restore(sess, path.join(model_dir, 'model.ckpt'))
-        test_logitss = None
+        test_logitss, test_embs = None, None
         for test_pos in range(0, test_feat.shape[0], batch_size):
             b_f, b_y = make_batch(
                 test_feat, test_pt, np.arange(y_num), test_pos, batch_size)
             if use_tag:
                 b_tg = make_tag_batch(
                     test_tags, np.arange(y_num), test_pos, batch_size)
-                test_logits = sess.run(
-                    logits_pt,
+                test_logits, test_emb = sess.run(
+                    [logits_pt, logits_emb],
                     feed_dict={
                         x_f: b_f, tags: b_tg,
                         mode: learn.ModeKeys.INFER})
             else:
-                test_logits = sess.run(
-                    logits_pt,
+                test_logits, test_emb = sess.run(
+                    [logits_pt, logits_emb],
                     feed_dict={
                         x_f: b_f,
                         mode: learn.ModeKeys.INFER})
+            test_emb = test_emb.reshape(-1, emb_size)
             if test_logitss is None:
                 test_logitss = test_logits  # * NORM_FACTOR
             else:
                 test_logitss = np.concatenate(
                     (test_logitss, test_logits), axis=0)
+            if test_embs is None:
+                test_embs = test_emb  # * NORM_FACTOR
+            else:
+                test_embs = np.concatenate(
+                    (test_embs, test_emb), axis=0)
     # print (test_logitss)
     print (denorm(test_logitss))
     np.save(pred_f, denorm(test_logitss))
+    np.save(pred_emb, denorm(test_embs))
     # np.save('{}.')
 
 
